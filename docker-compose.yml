@@ -1,0 +1,45 @@
+version: "3.8"
+
+# B6: registry + two agent nodes. Alice discovers Bob through the
+# registry and completes the full 3-message mutual handshake in under
+# 60 seconds. Run: docker compose up --abort-on-container-exit agent-alice
+
+services:
+  registry:
+    build: .
+    command: uvicorn uahp.registry.main:app --host 0.0.0.0 --port 8001
+    environment:
+      UAHP_REGISTRY_DB: sqlite:////data/uahp_registry.db
+    volumes:
+      - registry-data:/data
+    ports:
+      - "8001:8001"
+
+  agent-bob:
+    build: .
+    command: python3 demos/agent_node.py
+    environment:
+      AGENT_NAME: bob
+      ROLE: responder
+      REGISTRY_URL: http://registry:8001
+      AGENT_HOST: agent-bob
+      LISTEN_PORT: "8100"
+    depends_on:
+      - registry
+
+  agent-alice:
+    build: .
+    command: python3 demos/agent_node.py
+    environment:
+      AGENT_NAME: alice
+      ROLE: initiator
+      PEER_NAME: bob
+      REGISTRY_URL: http://registry:8001
+      AGENT_HOST: agent-alice
+      LISTEN_PORT: "8100"
+    depends_on:
+      - registry
+      - agent-bob
+
+volumes:
+  registry-data:

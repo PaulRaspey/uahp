@@ -12,8 +12,13 @@ from uahp.schemas.registry import (
     Capability, ThermodynamicProfile, CSPHints
 )
 
+import os
+
 Base = declarative_base()
-engine = create_engine("sqlite:///./uahp_registry.db", connect_args={"check_same_thread": False})
+engine = create_engine(
+    os.environ.get("UAHP_REGISTRY_DB", "sqlite:///./uahp_registry.db"),
+    connect_args={"check_same_thread": False},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class AgentModel(Base):
@@ -91,8 +96,8 @@ async def heartbeat(payload: dict, db: Session = Depends(get_db)):
         profile = agent.thermo_profile or {}
         profile["currentPressureScore"] = payload["newPressureScore"]
         from sqlalchemy.orm.attributes import flag_modified
-    agent.thermo_profile = profile
-    flag_modified(agent, "thermo_profile")
+        agent.thermo_profile = profile
+        flag_modified(agent, "thermo_profile")
     db.commit()
     return {"status": "ok", "agentId": payload.get("agentId")}
 
