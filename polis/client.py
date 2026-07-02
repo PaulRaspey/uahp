@@ -219,12 +219,12 @@ class POLISClient:
         return {
             "polis_version": "0.1.0",
             "generated_at": datetime.utcnow().isoformat(),
-            "did": self._did.dict() if self._did else None,
-            "reputation": self._reputation.dict() if self._reputation else None,
-            "employment": self._employment.dict() if self._employment else None,
-            "insurance": self._insurance.dict() if self._insurance else None,
-            "license": self._license.dict() if self._license else None,
-            "standing": standing.dict(),
+            "did": self._did.model_dump() if self._did else None,
+            "reputation": self._reputation.model_dump() if self._reputation else None,
+            "employment": self._employment.model_dump() if self._employment else None,
+            "insurance": self._insurance.model_dump() if self._insurance else None,
+            "license": self._license.model_dump() if self._license else None,
+            "standing": standing.model_dump(),
         }
 
     def _sign(self, payload: str) -> str:

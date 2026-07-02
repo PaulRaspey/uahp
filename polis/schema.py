@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
 
@@ -44,8 +44,7 @@ class AgentDID(BaseModel):
     attestations: list[str] = Field(default_factory=list)
     signature: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ReputationScore(BaseModel):
@@ -91,8 +90,7 @@ class EmploymentCertificate(BaseModel):
     status: EmploymentStatus = EmploymentStatus.PROVISIONAL
     signature: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class InsuranceBond(BaseModel):
@@ -124,8 +122,7 @@ class ProfessionalLicense(BaseModel):
     revocation_reason: Optional[str] = None
     signature: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class StandingScore(BaseModel):

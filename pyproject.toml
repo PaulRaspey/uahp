@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uahp"
+version = "0.7.0"
+description = "UAHP: the identity, trust, and accountability layer for autonomous agents"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Paul Raspey" }]
+dependencies = [
+    "cryptography>=41",
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+registry = ["fastapi", "sqlalchemy", "uvicorn"]
+csp = ["groq"]
+pqc = ["liboqs-python"]
+
+[project.scripts]
+uahp = "uahp.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["uahp*", "polis*", "csp*"]
