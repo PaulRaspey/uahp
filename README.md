@@ -1,5 +1,7 @@
 # UAHP
 
+[![CI](https://github.com/PaulRaspey/uahp/actions/workflows/ci.yml/badge.svg)](https://github.com/PaulRaspey/uahp/actions/workflows/ci.yml)
+
 **The identity, trust, and accountability layer for autonomous agents.**
 
 MCP standardized how agents use tools. A2A standardized how agents exchange tasks. UAHP standardizes who an agent is, who vouches for it, whether it is alive, and how it ends.
@@ -34,7 +36,7 @@ demo PASSED (initiator exit 0)
 
 That last act is the point. Every agent framework can create agents. UAHP is about what happens when one must end: a death certificate is the agent's final signature, the private key is destroyed, and from that moment every peer refuses its signatures, its receipts, and its handshakes. Retirement you can prove, not a row flipped in someone's database.
 
-The quickstart and the full demo have been verified on a fresh clone in a clean virtualenv on macOS 12 (Python 3.9).
+The quickstart and the full demo have been verified on a fresh clone in a clean virtualenv on macOS 12 (Python 3.9) and Ubuntu 24.04 (Python 3.12.3).
 
 ## Quickstart
 

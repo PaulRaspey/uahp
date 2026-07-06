@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -172,7 +173,15 @@ def main(argv=None) -> int:
     p_run.set_defaults(func=cmd_run)
 
     args = parser.parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except BrokenPipeError:
+        # The consumer closed the pipe (e.g. `uahp status | head`).
+        # Redirect stdout to devnull so the interpreter's exit flush
+        # does not raise a second BrokenPipeError, and exit cleanly.
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        return 0
 
 
 if __name__ == "__main__":
