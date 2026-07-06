@@ -169,6 +169,10 @@ tests/test_kem_flow.py      13 passed with real ML-KEM-768 (liboqs installed)
 
 Python 3.9 or later. Core dependencies: `cryptography`, `pydantic` v2. Extras: `registry` (FastAPI, SQLAlchemy, uvicorn), `csp`, `pqc` (liboqs-python).
 
+## Contributing and security
+
+Contributions welcome: see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately per [SECURITY.md](SECURITY.md), not in public issues.
+
 ## License
 
 MIT. Version 0.7.1.
