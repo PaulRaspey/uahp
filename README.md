@@ -161,6 +161,8 @@ tests/test_extended.py      edge cases, reputation consistency, death blocks tru
 tests/test_kem_flow.py      13 passed with real ML-KEM-768 (liboqs installed)
 ```
 
+Micro-benchmark (`python3 demos/benchmark.py`): about 350 full 3-message mutual handshakes/sec and 1,150 encrypted signed receipts/sec (create, seal, open, verify), in-process on a single core of a 2.2 GHz Intel Core i7-5650U (a 2015 laptop).
+
 ## Docker
 
 `Dockerfile` and `docker-compose.yml` (a registry plus two agent nodes) match the reference demo topology and entrypoint exactly, but the compose path has not been executed by the maintainer yet. The validated path is `pip install -e ".[registry]"` plus `demos/run_demo.py`. If you run the compose path, an issue confirming or correcting it is welcome.
