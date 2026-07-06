@@ -13,6 +13,10 @@ mutual handshake, signed receipt exchange, Bob's death certificate,
 and the live rejection of Bob's post-death signature.
 
 Requires the registry extra:  pip install -e ".[registry]"
+
+For screen recording, slow the narrative down with act pauses:
+
+    DEMO_PACE=8 python3 demos/run_demo.py
 """
 
 import os

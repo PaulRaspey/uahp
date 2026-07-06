@@ -48,6 +48,8 @@ REGISTRY_URL = os.environ.get("REGISTRY_URL", "http://localhost:8001")
 AGENT_HOST = os.environ.get("AGENT_HOST", "localhost")
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "8100"))
 DEADLINE_SECONDS = 60.0
+# Seconds to pause before each act, for screen recording. 0 = full speed.
+DEMO_PACE = float(os.environ.get("DEMO_PACE", "0"))
 
 core = UAHPCore()
 identity = core.create_identity({"name": AGENT_NAME, "crypto_mode": "classical"})
@@ -56,6 +58,12 @@ START = time.time()
 
 def log(msg: str) -> None:
     print(f"[{AGENT_NAME} +{time.time() - START:5.1f}s] {msg}", flush=True)
+
+
+def act(title: str) -> None:
+    if DEMO_PACE:
+        time.sleep(DEMO_PACE)
+    log(f"────── {title} ──────")
 
 
 def http_json(method: str, url: str, payload=None, timeout=5.0):
@@ -251,7 +259,7 @@ def run_initiator() -> int:
     peer_public = http_json("GET", public_url)
     log(f"fetched peer public identity {peer_public['agent_id'][:12]}...")
 
-    # ── Act 1: mutual handshake ──────────────────────────────────────────
+    act("ACT 1: MUTUAL HANDSHAKE (Ed25519 + X25519/HKDF)")
     m1 = core.handshake_init(identity, peer_public)
     m2 = http_json("POST", f"{handshake_url}/respond", m1)
     m3 = core.handshake_finalize(identity, m2)  # verifies responder signature
@@ -280,7 +288,7 @@ def run_initiator() -> int:
         log("FATAL: exceeded 60 second acceptance deadline")
         return 1
 
-    # ── Act 2: signed receipt exchange ───────────────────────────────────
+    act("ACT 2: SIGNED RECEIPT EXCHANGE")
     mine = core.create_receipt(
         identity, "demo-task-1", "completed_work", True,
         input_data="demo input", output_data="demo output",
@@ -299,7 +307,7 @@ def run_initiator() -> int:
     log(f"peer receipt {peer_receipt.receipt_id[:8]}... signature VERIFIED "
         f"(both directions signed and checked)")
 
-    # ── Act 3: death certificate ─────────────────────────────────────────
+    act("ACT 3: DEATH CERTIFICATE")
     dead = http_json("POST", f"{base_url}/uahp/die",
                      {"reason": "demo decommission",
                       "declared_by": identity.agent_id})
@@ -311,7 +319,7 @@ def run_initiator() -> int:
     log(f"death certificate for {PEER_NAME} VERIFIED and recorded "
         f"(reason: {cert.reason})")
 
-    # ── Act 4: post-death rejection, live ────────────────────────────────
+    act("ACT 4: POST-DEATH REJECTION, LIVE")
     failures = 0
 
     # 4a. The dead agent itself refuses to sign (key destroyed).
