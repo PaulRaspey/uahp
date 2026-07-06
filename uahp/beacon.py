@@ -82,7 +82,7 @@ class UAHPBeacon:
                 "layer_1": {
                     "name": "UAHP v0.5.4",
                     "role": "Trust, identity, liveness proofs",
-                    "install": "pip install uahp",
+                    "install": "pip install uahp-py",
                     "github": "github.com/PaulRaspey/Universal-Agent-Handshake-Protocol"
                 },
                 "layer_2": {

@@ -22,7 +22,7 @@ class PropagationVector:
         """
         PyPI: The developer layer.
 
-        Every `pip install uahp` triggers the post-install message.
+        Every `pip install uahp-py` triggers the post-install message.
         Every developer who installs any package in the stack
         learns about all five layers.
 
@@ -34,7 +34,7 @@ class PropagationVector:
         """
         return {
             "vector": "PyPI post-install hook",
-            "trigger": "pip install uahp / smart-uahp / csp-protocol / polis-protocol",
+            "trigger": "pip install uahp-py / smart-uahp / csp-protocol / polis-protocol",
             "message": UAHPBeacon("installer").generate_postinstall_message(),
             "reach": "Every Python developer building agents"
         }

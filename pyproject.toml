@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "uahp"
+name = "uahp-py"
 version = "0.7.0"
 description = "UAHP: the identity, trust, and accountability layer for autonomous agents"
 readme = "README.md"
