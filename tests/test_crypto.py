@@ -190,6 +190,52 @@ def test_death_certificate_revokes():
           not core.verify_receipt(forged, cert.public_key))
 
 
+def test_revocation_rejects_post_death():
+    """
+    The full revocation narrative, explicitly:
+      1. identity active, its signature VERIFIES
+      2. death certificate issued
+      3. the same identity's next signature is REFUSED with a clear
+         revocation reason, and a post-death-timestamped signature is
+         rejected by the verifier even with the correct key.
+    """
+    print("\n[7b] Revocation rejects post-death signatures")
+    core = UAHPCore()
+    bob = core.create_identity({"name": "Bob"})
+
+    # 1. Alive: signing works and verifies.
+    payload = "pre-death message"
+    sig = bob.sign(payload)
+    check("pre-death signature verifies",
+          verify_signature(bob.public_key, payload, sig))
+    receipt = core.create_receipt(bob, "task-1", "work", True, "in", "out")
+    check("pre-death receipt verifies",
+          core.verify_receipt(receipt, bob.public_key))
+
+    # 2. Death certificate issued.
+    cert = core.declare_death(bob.agent_id, reason="decommissioned")
+    check("death certificate verifies", UAHPCore.verify_death_certificate(cert))
+
+    # 3. The next signature attempt is refused with a revocation reason.
+    try:
+        bob.sign("post-death message")
+        check("post-death sign refused", False)
+        reason = ""
+    except IdentityRevoked as e:
+        check("post-death sign refused", True)
+        reason = str(e)
+    check("refusal names revocation", "revoked" in reason.lower())
+
+    # A verifier holding the (real) key still rejects material
+    # timestamped after death: revocation is enforced at verify time,
+    # not just at sign time.
+    forged = type(receipt)(**{**receipt.to_dict(),
+                              "timestamp": cert.timestamp + 100000})
+    check("verifier rejects post-death-timestamped receipt",
+          not core.verify_receipt(forged, bob.public_key))
+    check("revocation list names the agent", core.is_revoked(bob.agent_id))
+
+
 def test_receipt_chain_integrity():
     print("\n[8] Receipt chain integrity")
     core = UAHPCore()
@@ -220,6 +266,7 @@ if __name__ == "__main__":
     test_replay_rejected()
     test_clock_skew_rejected()
     test_death_certificate_revokes()
+    test_revocation_rejects_post_death()
     test_receipt_chain_integrity()
     print("\n" + "=" * 60)
     print(f"{PASS} passed, {FAIL} failed")

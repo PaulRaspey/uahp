@@ -686,6 +686,19 @@ class UAHPCore:
     def get_death_certificate(self, agent_id: str) -> Optional[DeathCertificate]:
         return self._dead_agents.get(agent_id)
 
+    def record_death_certificate(self, cert: DeathCertificate) -> bool:
+        """
+        Honor a PEER's death certificate. The certificate is verified
+        against its embedded public key before being recorded; once
+        recorded, this core refuses handshakes with the dead agent_id and
+        rejects any of its signatures timestamped after the certificate.
+        """
+        if not self.verify_death_certificate(cert):
+            return False
+        self._dead_agents[cert.agent_id] = cert
+        self._revoked.add(cert.agent_id)
+        return True
+
     @staticmethod
     def verify_death_certificate(cert: DeathCertificate) -> bool:
         """Anyone can verify a death certificate with the embedded public key."""

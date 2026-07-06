@@ -1,0 +1,31 @@
+================================================================
+UAHP reference demo: three processes, one protocol
+================================================================
+[bob      ] [bob +  0.0s] identity 96f20240-441... pubkey c7018f90bd98e029...
+[alice    ] [alice +  0.0s] identity 3eb5bba8-d40... pubkey 5eff2d88602f55a4...
+[bob      ] [bob +  0.0s] handshake endpoint listening on :8100
+[alice    ] [alice +  0.0s] handshake endpoint listening on :8101
+[bob      ] [bob +  2.1s] registered with registry: registered as uahp:bob:96f20240-4414-4...
+[bob      ] [bob +  2.1s] responder ready; serving handshakes
+[alice    ] [alice +  2.1s] registered with registry: registered as uahp:alice:3eb5bba8-d405...
+[alice    ] [alice +  2.1s] discovered peer uahp:bob:96f20240-4414-4... via registry
+[alice    ] [alice +  2.1s] fetched peer public identity 96f20240-441...
+[bob      ] [bob +  2.2s] m1 received, initiator signature VERIFIED; sent m2
+[alice    ] [alice +  2.2s] m2 received, responder signature VERIFIED; sent m3
+[bob      ] [bob +  2.2s] m3 received, mutual handshake COMPLETE (session c64bce6bfc78c401...)
+[alice    ] [alice +  2.2s] MUTUAL HANDSHAKE COMPLETE in 2.2s (deadline 60s)
+[alice    ] [alice +  2.2s]   session_token: c64bce6bfc78c401e3e6631836a3296a
+[alice    ] [alice +  2.2s]   shared secret sha256 matches on both nodes: 3db4a2a7cf9c71173d86550a...
+[alice    ] [alice +  2.2s] issued signed receipt b3b790a5... for demo-task-1
+[bob      ] [bob +  2.2s] receipt b3b790a5... from 3eb5bba8... signature VERIFIED
+[alice    ] [alice +  2.2s] peer verified our receipt signature
+[alice    ] [alice +  2.2s] peer receipt 0562d7ca... signature VERIFIED (both directions signed and checked)
+[bob      ] [bob +  2.2s] death certificate ISSUED; private key DESTROYED
+[alice    ] [alice +  2.2s] death certificate for bob VERIFIED and recorded (reason: demo decommission)
+[bob      ] [bob +  2.2s] sign request REFUSED: Identity 96f20240 is revoked; its private key is destroyed.
+[alice    ] [alice +  2.2s] bob REFUSED to sign post-death: Identity 96f20240 is revoked; its private key is destroyed.
+[alice    ] [alice +  2.2s] REJECTED post-death-timestamped receipt from bob: identity is revoked
+[alice    ] [alice +  2.2s] REFUSED new handshake with dead agent: Responder 96f20240 is dead/revoked
+[alice    ] [alice +  2.2s] DEMO COMPLETE: handshake, signed receipts, death certificate, and live post-death rejection, all cryptographically enforced
+================================================================
+demo PASSED (initiator exit 0)
