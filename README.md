@@ -147,4 +147,4 @@ Python 3.9 or later. Core dependencies: `cryptography`, `pydantic` v2. Extras: `
 
 ## License
 
-MIT. Version 0.7.0.
+MIT. Version 0.7.1.
