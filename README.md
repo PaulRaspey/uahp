@@ -68,6 +68,23 @@ uahp verify http://127.0.0.1:8100
 
 It checks seven things: a real Ed25519 identity (challenge signatures that verify and bind), a completed mutual handshake, receipts signed and verified in both directions through the encrypted record channel with tampered receipts rejected, plaintext receipts refused outside that channel, replay refusal, an honest crypto_mode declaration, and revocation honored after death. The reference agent scores 7 of 7 PASS. The included `demos/broken_agent.py`, which uses HMAC pseudo-signatures, accepts everything, claims hybrid PQC it does not have, and ignores its own death certificate, scores 7 of 7 correct FAILs and a nonzero exit code. Note that the revocation check is destructive by design: it asks the agent to die and then confirms the death sticks.
 
+## Wrap an existing agent
+
+You do not rewrite your agent to adopt UAHP. You wrap it.
+
+If your agent is reachable over HTTP, the sidecar puts the full UAHP surface in front of it in five lines. Callers get a verifiable identity, a mutual handshake, an encrypted record channel, and a signed receipt for every task; your agent stays untouched:
+
+```python
+from http_sidecar import UAHPSidecar
+
+sidecar = UAHPSidecar(upstream="http://127.0.0.1:8131", name="my-agent")
+sidecar.serve(port=8130)
+```
+
+`python3 examples/http_sidecar.py` runs the whole loop against a dummy upstream agent: handshake, one encrypted task, one encrypted signed receipt, receipt signature verified by the client.
+
+If your agent lives in an MCP client instead, add the UAHP MCP server (`uahp run`) to the client configuration and the agent gains all ten protocol tools without code changes: see [examples/mcp_sidecar.md](examples/mcp_sidecar.md). Framework-specific adapters (LangChain, CrewAI) are on the roadmap.
+
 ## The handshake
 
 Three messages, both sides authenticated, works across processes and hosts:
