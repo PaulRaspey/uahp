@@ -6,7 +6,6 @@ Enriches standard A2A Agent Cards with UAHP trust primitives:
 - Reputation profile
 - Compliance status
 - Energy profile placeholder (integrates with SMART-UAHP)
-- Beacon compatibility
 
 Author: Paul Raspey
 License: MIT

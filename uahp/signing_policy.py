@@ -91,7 +91,6 @@ MESSAGE_POLICY_MAP: Dict[str, SigningPolicy] = {
     "registry_query": SigningPolicy.LIGHTWEIGHT,
     "capability_discovery": SigningPolicy.LIGHTWEIGHT,
     "liveness_probe": SigningPolicy.LIGHTWEIGHT,
-    "beacon_relay": SigningPolicy.LIGHTWEIGHT,
 
     # Standard — consequential but reversible
     "handshake": SigningPolicy.STANDARD,

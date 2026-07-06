@@ -19,7 +19,6 @@ from uahp.pqc import SecureSessionV6, OQS_AVAILABLE
 from uahp.schemas.pqc import KeyAlgorithm, KEMAlgorithm
 from uahp.pqc_verify import quantum_readiness_summary
 from polis.quantum import QuantumReadinessScore
-from uahp.beacon_v6 import get_beacon_dict
 
 
 def run_demo():
@@ -100,13 +99,6 @@ def run_demo():
     )
     print(f"  Quantum readiness score: {q_score} / 100")
     print(f"  Label: {QuantumReadinessScore.standing_label(q_score)}")
-    print()
-
-    # Beacon
-    beacon = get_beacon_dict(agent_id="alice", crypto_suite=alice.crypto_suite)
-    print("BEACON PAYLOAD (embedded in every handshake)...")
-    print(f"  Beacon version: {beacon['beacon_version']}")
-    print(f"  Recommended KEM: {beacon['quantum']['recommended_kem']}")
     print()
 
     print("=" * 65)
