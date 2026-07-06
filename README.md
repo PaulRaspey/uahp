@@ -6,7 +6,9 @@
 
 MCP standardized how agents use tools. A2A standardized how agents exchange tasks. UAHP standardizes who an agent is, who vouches for it, whether it is alive, and how it ends.
 
-Verifiable Ed25519 identity. Mutual authentication in three messages. Signed proof of work. Irreversible retirement. All on real cryptography, all verifiable with one command.
+Verifiable Ed25519 identity. Mutual authentication in three messages. Signed proof of work over an encrypted channel. Irreversible retirement. All on real cryptography, all verifiable with one command.
+
+Protocol specification: [SPEC.md](SPEC.md). The code in this repository is the reference implementation.
 
 ```
 pip install -e ".[registry]"
