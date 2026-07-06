@@ -28,3 +28,16 @@ jobs:
           python tests/test_stack.py
           python tests/test_extended.py
           python tests/test_kem_flow.py
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the compose topology (registry + two agent nodes)
+        # --exit-code-from implies --abort-on-container-exit and makes
+        # `docker compose up` return the initiator's exit code, so this
+        # step fails unless agent-alice finishes the full demo with exit 0.
+        run: timeout 600 docker compose up --build --exit-code-from agent-alice
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
