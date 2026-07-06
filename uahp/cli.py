@@ -83,6 +83,8 @@ def cmd_status(args) -> int:
 
 
 def cmd_verify(args) -> int:
+    if args.agent:
+        return _verify_remote_agent(args.agent)
     identity = _load_identity()
     failures = []
 
@@ -115,6 +117,26 @@ def cmd_verify(args) -> int:
     return 0
 
 
+def _verify_remote_agent(base_url: str) -> int:
+    from .verifier import verify_agent
+
+    print(f"UAHP compliance verification: {base_url}")
+    print("(the revocation check is destructive: it retires the candidate)")
+    print("-" * 64)
+    results = verify_agent(base_url)
+    failed = 0
+    for r in results:
+        mark = "PASS" if r.passed else "FAIL"
+        failed += 0 if r.passed else 1
+        print(f"  {mark}  {r.requirement:<12} {r.detail}")
+    print("-" * 64)
+    if failed:
+        print(f"NOT COMPLIANT: {failed} of {len(results)} requirements failed")
+        return 1
+    print(f"UAHP COMPLIANT: all {len(results)} requirements passed")
+    return 0
+
+
 def cmd_run(args) -> int:
     from .mcp_server import main as mcp_main
     asyncio.run(mcp_main())
@@ -135,7 +157,15 @@ def main(argv=None) -> int:
     p_status = sub.add_parser("status", help="Show the local identity and key health")
     p_status.set_defaults(func=cmd_status)
 
-    p_verify = sub.add_parser("verify", help="Prove the local identity signs and verifies")
+    p_verify = sub.add_parser(
+        "verify",
+        help="Verify the local identity, or a running agent's UAHP compliance",
+    )
+    p_verify.add_argument(
+        "agent", nargs="?", default=None,
+        help="Base URL of a running agent to verify (e.g. http://127.0.0.1:8100). "
+             "The revocation check retires the candidate agent.",
+    )
     p_verify.set_defaults(func=cmd_verify)
 
     p_run = sub.add_parser("run", help="Start the UAHP MCP server on stdio")

@@ -50,7 +50,7 @@ LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "8100"))
 DEADLINE_SECONDS = 60.0
 
 core = UAHPCore()
-identity = core.create_identity({"name": AGENT_NAME})
+identity = core.create_identity({"name": AGENT_NAME, "crypto_mode": "classical"})
 START = time.time()
 
 
