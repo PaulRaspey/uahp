@@ -359,7 +359,8 @@ def run_initiator() -> int:
 
 
 def main() -> int:
-    log(f"identity {identity.agent_id[:12]}... pubkey {identity.public_key[:16]}...")
+    log(f"identity {identity.agent_id} = sha256(pubkey)")
+    log(f"pubkey {identity.public_key[:16]}...")
     serve()
     register_with_registry()
 

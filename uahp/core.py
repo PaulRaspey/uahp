@@ -117,10 +117,15 @@ class AgentIdentity:
 
     @classmethod
     def create(cls, metadata: Optional[Dict] = None) -> "AgentIdentity":
+        """
+        Create a new identity. agent_id is self-certifying:
+        agent_id = sha256(raw public key bytes), hex encoded.
+        Human-friendly labels belong in metadata["display_name"].
+        """
         private_key = Ed25519PrivateKey.generate()
         public_key = private_key.public_key().public_bytes_raw().hex()
         return cls(
-            agent_id=str(uuid.uuid4()),
+            agent_id=hashlib.sha256(bytes.fromhex(public_key)).hexdigest(),
             public_key=public_key,
             created_at=time.time(),
             metadata=metadata or {},

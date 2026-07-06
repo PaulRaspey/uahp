@@ -43,9 +43,13 @@ def check(name, condition):
 
 
 def test_identity_is_real_keypair():
+    import hashlib
     print("\n[1] Ed25519 identity")
     alice = AgentIdentity.create({"name": "Alice"})
     check("public key is 32 raw bytes (64 hex chars)", len(alice.public_key) == 64)
+    check("agent_id is self-certifying: sha256(public key bytes)",
+          alice.agent_id == hashlib.sha256(bytes.fromhex(alice.public_key)).hexdigest())
+    check("agent_id is 64 hex chars", len(alice.agent_id) == 64)
     sig = alice.sign("hello")
     check("signature verifies with public key only",
           verify_signature(alice.public_key, "hello", sig))
