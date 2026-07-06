@@ -13,6 +13,8 @@ Proves the claims the protocol makes:
   7. Death certificates revoke: key destroyed, revocation enforced,
      the certificate itself remains independently verifiable.
   8. Receipt chains detect tampering and sequence-number gaps.
+  9. The AEAD record layer round trips both directions and rejects
+     tampered, replayed, and out-of-order frames.
 
 Run: python3 test_crypto.py
 """
@@ -260,6 +262,65 @@ def test_receipt_chain_integrity():
           not core.verify_receipt_chain(alice.agent_id))
 
 
+def test_record_layer():
+    print("\n[9] AEAD record layer (ChaCha20-Poly1305)")
+    from uahp.record import RecordChannel, RecordError
+    secret = os.urandom(32)
+    a = RecordChannel(secret, "initiator")
+    b = RecordChannel(secret, "responder")
+
+    # Round trip in both directions.
+    frame_ab = a.seal({"msg": "initiator to responder"})
+    check("initiator->responder round trip",
+          b.open_json(frame_ab) == {"msg": "initiator to responder"})
+    frame_ba = b.seal({"msg": "responder to initiator"})
+    check("responder->initiator round trip",
+          a.open_json(frame_ba) == {"msg": "responder to initiator"})
+
+    # Direction keys are distinct: a frame cannot be opened by its sender.
+    a2 = RecordChannel(secret, "initiator")
+    b2 = RecordChannel(secret, "responder")
+    own = a2.seal("loopback attempt")
+    try:
+        a2.open(own)
+        check("own frame rejected (per-direction keys)", False)
+    except RecordError:
+        check("own frame rejected (per-direction keys)", True)
+
+    # Tampered ciphertext is rejected.
+    frame = a2.seal({"amount": 100})
+    ct = frame["ciphertext"]
+    frame["ciphertext"] = ("0" if ct[0] != "0" else "1") + ct[1:]
+    try:
+        b2.open(frame)
+        check("tampered ciphertext rejected", False)
+    except RecordError:
+        check("tampered ciphertext rejected", True)
+
+    # Replayed frame is rejected (sequence must advance).
+    a3 = RecordChannel(secret, "initiator")
+    b3 = RecordChannel(secret, "responder")
+    frame = a3.seal("once only")
+    b3.open(frame)
+    try:
+        b3.open(frame)
+        check("replayed frame rejected", False)
+    except RecordError:
+        check("replayed frame rejected", True)
+
+    # Out-of-order frame is rejected: deliver seq 1 before seq 0.
+    a4 = RecordChannel(secret, "initiator")
+    b4 = RecordChannel(secret, "responder")
+    first, second = a4.seal("first"), a4.seal("second")
+    try:
+        b4.open(second)
+        check("out-of-order frame rejected", False)
+    except RecordError:
+        check("out-of-order frame rejected", True)
+    check("in-order frame still accepted after rejection",
+          b4.open(first) == b"first")
+
+
 if __name__ == "__main__":
     print("UAHP Crypto Reality Test Suite")
     print("=" * 60)
@@ -272,6 +333,7 @@ if __name__ == "__main__":
     test_death_certificate_revokes()
     test_revocation_rejects_post_death()
     test_receipt_chain_integrity()
+    test_record_layer()
     print("\n" + "=" * 60)
     print(f"{PASS} passed, {FAIL} failed")
     sys.exit(1 if FAIL else 0)

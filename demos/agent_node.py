@@ -7,8 +7,10 @@ its peer through the registry and runs the full narrative:
 
   1. HANDSHAKE   3-message mutual authentication, signatures verified
                  both directions, same X25519+HKDF secret on both sides
-  2. RECEIPTS    each side issues a signed work receipt; each side
-                 verifies the other's receipt signature
+  2. RECEIPTS    each side issues a signed work receipt; receipts travel
+                 through the ChaCha20-Poly1305 record layer keyed by the
+                 handshake secret, and each side verifies the other's
+                 receipt signature after decrypting
   3. DEATH       the responder issues its own death certificate and
                  destroys its private key
   4. REJECTION   the responder refuses to sign post-death, and the
@@ -40,6 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from uahp.core import (
     UAHPCore, HandshakeError, IdentityRevoked, Receipt, DeathCertificate,
 )
+from uahp.record import RecordError
 
 AGENT_NAME = os.environ.get("AGENT_NAME", "agent")
 ROLE = os.environ.get("ROLE", "responder")
@@ -54,6 +57,9 @@ DEMO_PACE = float(os.environ.get("DEMO_PACE", "0"))
 core = UAHPCore()
 identity = core.create_identity({"name": AGENT_NAME, "crypto_mode": "classical"})
 START = time.time()
+
+# Encrypted record channels, one per completed handshake (session_token -> RecordChannel).
+channels = {}
 
 
 def log(msg: str) -> None:
@@ -108,6 +114,9 @@ class HandshakeHandler(BaseHTTPRequestHandler):
                 m3 = self._read_json()
                 result = core.handshake_complete(identity, m3)
                 if result.success:
+                    session = core.get_session(result.session_token)
+                    channels[result.session_token] = session.record_channel(
+                        identity.agent_id)
                     log(f"m3 received, mutual handshake COMPLETE "
                         f"(session {result.session_token[:16]}...)")
                 self._reply(200, {
@@ -130,11 +139,27 @@ class HandshakeHandler(BaseHTTPRequestHandler):
             self._reply(400, {"error": str(e)})
 
     def _handle_receipt(self):
-        """Verify a peer's signed receipt; answer with our own."""
+        """
+        Verify a peer's signed receipt and answer with our own. Receipts
+        travel ONLY through the encrypted record channel: a request that
+        is not a valid AEAD frame on an established session is refused.
+        """
         body = self._read_json()
-        peer_receipt = Receipt(**body["receipt"])
-        verified = core.verify_receipt(peer_receipt, body["public_key"])
-        log(f"receipt {peer_receipt.receipt_id[:8]}... from "
+        channel = channels.get(body.get("session_token", ""))
+        if channel is None or "frame" not in body:
+            log("receipt REFUSED: not inside an encrypted record channel")
+            self._reply(400, {"error": "receipts must arrive as encrypted "
+                                       "record frames on an established session"})
+            return
+        try:
+            inner = json.loads(channel.open(body["frame"]).decode())
+        except RecordError as e:
+            log(f"record frame REJECTED: {e}")
+            self._reply(400, {"error": f"record layer: {e}"})
+            return
+        peer_receipt = Receipt(**inner["receipt"])
+        verified = core.verify_receipt(peer_receipt, inner["public_key"])
+        log(f"decrypted receipt {peer_receipt.receipt_id[:8]}... from "
             f"{peer_receipt.agent_id[:8]}... signature "
             f"{'VERIFIED' if verified else 'REJECTED'}")
         if not verified:
@@ -148,11 +173,11 @@ class HandshakeHandler(BaseHTTPRequestHandler):
         except IdentityRevoked as e:
             self._reply(403, {"verified": True, "refusal": str(e)})
             return
-        self._reply(200, {
+        self._reply(200, {"frame": channel.seal({
             "verified": True,
             "receipt": mine.to_dict(),
             "public_key": identity.public_key,
-        })
+        })})
 
     def _handle_sign(self):
         """Sign an arbitrary payload, or refuse if this identity is revoked."""
@@ -288,24 +313,34 @@ def run_initiator() -> int:
         log("FATAL: exceeded 60 second acceptance deadline")
         return 1
 
-    act("ACT 2: SIGNED RECEIPT EXCHANGE")
+    act("ACT 2: ENCRYPTED RECEIPT EXCHANGE (ChaCha20-Poly1305 record layer)")
+    channel = session.record_channel(identity.agent_id)
     mine = core.create_receipt(
         identity, "demo-task-1", "completed_work", True,
         input_data="demo input", output_data="demo output",
     )
     log(f"issued signed receipt {mine.receipt_id[:8]}... for demo-task-1")
+    frame = channel.seal({"receipt": mine.to_dict(),
+                          "public_key": identity.public_key})
+    log(f"receipt sealed into AEAD record frame "
+        f"(seq {frame['seq']}, ciphertext {frame['ciphertext'][:32]}...)")
     ack = http_json("POST", f"{base_url}/uahp/receipt",
-                    {"receipt": mine.to_dict(), "public_key": identity.public_key})
-    if not ack.get("verified"):
+                    {"session_token": done["session_token"], "frame": frame})
+    try:
+        inner = channel.open_json(ack["frame"])
+    except (KeyError, RecordError) as e:
+        log(f"FATAL: peer's reply frame did not authenticate: {e}")
+        return 1
+    if not inner.get("verified"):
         log("FATAL: peer rejected our receipt signature")
         return 1
-    log(f"peer verified our receipt signature")
-    peer_receipt = Receipt(**ack["receipt"])
-    if not core.verify_receipt(peer_receipt, ack["public_key"]):
+    log("peer decrypted, verified, and answered through the same channel")
+    peer_receipt = Receipt(**inner["receipt"])
+    if not core.verify_receipt(peer_receipt, inner["public_key"]):
         log("FATAL: peer's receipt signature did not verify")
         return 1
-    log(f"peer receipt {peer_receipt.receipt_id[:8]}... signature VERIFIED "
-        f"(both directions signed and checked)")
+    log(f"peer receipt {peer_receipt.receipt_id[:8]}... signature VERIFIED; "
+        f"receipts traveled ENCRYPTED in both directions")
 
     act("ACT 3: DEATH CERTIFICATE")
     dead = http_json("POST", f"{base_url}/uahp/die",
@@ -336,7 +371,7 @@ def run_initiator() -> int:
     # though the signature bytes themselves are valid Ed25519.
     forged = Receipt(**{**peer_receipt.to_dict(),
                         "timestamp": cert.timestamp + 100000})
-    if core.verify_receipt(forged, ack["public_key"]):
+    if core.verify_receipt(forged, inner["public_key"]):
         log("FATAL: post-death-timestamped receipt verified!")
         failures += 1
     else:

@@ -194,6 +194,16 @@ class Session:
         self.last_activity = time.time()
         self.message_count += 1
 
+    def record_channel(self, agent_id: str):
+        """
+        Open this party's end of the encrypted record layer
+        (ChaCha20-Poly1305 over the session secret). agent_id selects
+        the direction keys: the handshake initiator (agent_a) sends on
+        the initiator-labeled key, the responder on the responder's.
+        """
+        from .record import RecordChannel
+        return RecordChannel.for_session(self, agent_id)
+
 
 # ── Receipts ─────────────────────────────────────────────────────────────────
 

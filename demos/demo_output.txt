@@ -1,35 +1,38 @@
 ================================================================
 UAHP reference demo: three processes, one protocol
 ================================================================
-[alice    ] [alice +  0.0s] identity b7de8f77-5ec... pubkey 613a246b5571c440...
-[bob      ] [bob +  0.0s] identity 8d767c08-252... pubkey 59cd33b84038f03b...
+[alice    ] [alice +  0.0s] identity 7a36dd4094e99f994926dc2922518b50c521a679fc1a68e8b73310f7dffc1637 = sha256(pubkey)
+[alice    ] [alice +  0.0s] pubkey 8ec6e26873fec33f...
 [alice    ] [alice +  0.0s] handshake endpoint listening on :8101
+[bob      ] [bob +  0.0s] identity 8024993c1400d09ee16c32cb2993725af3ac20415ead28e730bdee108bb193d8 = sha256(pubkey)
+[bob      ] [bob +  0.0s] pubkey b6842f3faf7ae7c3...
 [bob      ] [bob +  0.0s] handshake endpoint listening on :8100
-[alice    ] [alice +  2.1s] registered with registry: registered as uahp:alice:b7de8f77-5ec1...
-[bob      ] [bob +  2.1s] registered with registry: registered as uahp:bob:8d767c08-2527-4...
+[alice    ] [alice +  2.1s] registered with registry: registered as uahp:alice:7a36dd4094e99...
+[bob      ] [bob +  2.1s] registered with registry: registered as uahp:bob:8024993c1400d09...
 [bob      ] [bob +  2.1s] responder ready; serving handshakes
-[alice    ] [alice +  2.1s] discovered peer uahp:bob:8d767c08-2527-4... via registry
-[alice    ] [alice +  2.1s] fetched peer public identity 8d767c08-252...
+[alice    ] [alice +  2.1s] discovered peer uahp:bob:8024993c1400d09... via registry
+[alice    ] [alice +  2.1s] fetched peer public identity 8024993c1400...
 [alice    ] [alice +  2.1s] ────── ACT 1: MUTUAL HANDSHAKE (Ed25519 + X25519/HKDF) ──────
-[bob      ] [bob +  2.2s] m1 received, initiator signature VERIFIED; sent m2
-[alice    ] [alice +  2.2s] m2 received, responder signature VERIFIED; sent m3
-[bob      ] [bob +  2.2s] m3 received, mutual handshake COMPLETE (session d42d91ab0692370e...)
-[alice    ] [alice +  2.2s] MUTUAL HANDSHAKE COMPLETE in 2.2s (deadline 60s)
-[alice    ] [alice +  2.2s]   session_token: d42d91ab0692370e01ba7f039ad750ea
-[alice    ] [alice +  2.2s]   shared secret sha256 matches on both nodes: 844ff47b246a341c2bc37d48...
-[alice    ] [alice +  2.2s] ────── ACT 2: SIGNED RECEIPT EXCHANGE ──────
-[alice    ] [alice +  2.2s] issued signed receipt e49bd1c2... for demo-task-1
-[bob      ] [bob +  2.2s] receipt e49bd1c2... from b7de8f77... signature VERIFIED
-[alice    ] [alice +  2.2s] peer verified our receipt signature
-[alice    ] [alice +  2.2s] peer receipt d3bc813d... signature VERIFIED (both directions signed and checked)
-[alice    ] [alice +  2.2s] ────── ACT 3: DEATH CERTIFICATE ──────
-[bob      ] [bob +  2.2s] death certificate ISSUED; private key DESTROYED
-[alice    ] [alice +  2.2s] death certificate for bob VERIFIED and recorded (reason: demo decommission)
-[alice    ] [alice +  2.2s] ────── ACT 4: POST-DEATH REJECTION, LIVE ──────
-[bob      ] [bob +  2.2s] sign request REFUSED: Identity 8d767c08 is revoked; its private key is destroyed.
-[alice    ] [alice +  2.2s] bob REFUSED to sign post-death: Identity 8d767c08 is revoked; its private key is destroyed.
-[alice    ] [alice +  2.2s] REJECTED post-death-timestamped receipt from bob: identity is revoked
-[alice    ] [alice +  2.2s] REFUSED new handshake with dead agent: Responder 8d767c08 is dead/revoked
-[alice    ] [alice +  2.2s] DEMO COMPLETE: handshake, signed receipts, death certificate, and live post-death rejection, all cryptographically enforced
+[bob      ] [bob +  2.1s] m1 received, initiator signature VERIFIED; sent m2
+[alice    ] [alice +  2.1s] m2 received, responder signature VERIFIED; sent m3
+[bob      ] [bob +  2.1s] m3 received, mutual handshake COMPLETE (session 6e77962e975cdc5b...)
+[alice    ] [alice +  2.1s] MUTUAL HANDSHAKE COMPLETE in 2.1s (deadline 60s)
+[alice    ] [alice +  2.1s]   session_token: 6e77962e975cdc5b5d1bc385f4b9089f
+[alice    ] [alice +  2.1s]   shared secret sha256 matches on both nodes: 3cd275aa4b62f74b2e396283...
+[alice    ] [alice +  2.1s] ────── ACT 2: ENCRYPTED RECEIPT EXCHANGE (ChaCha20-Poly1305 record layer) ──────
+[alice    ] [alice +  2.1s] issued signed receipt f34262c4... for demo-task-1
+[alice    ] [alice +  2.1s] receipt sealed into AEAD record frame (seq 0, ciphertext a35ddfcf6a140e4d2fd993c826242c7a...)
+[bob      ] [bob +  2.1s] decrypted receipt f34262c4... from 7a36dd40... signature VERIFIED
+[alice    ] [alice +  2.1s] peer decrypted, verified, and answered through the same channel
+[alice    ] [alice +  2.1s] peer receipt c86251d1... signature VERIFIED; receipts traveled ENCRYPTED in both directions
+[alice    ] [alice +  2.1s] ────── ACT 3: DEATH CERTIFICATE ──────
+[bob      ] [bob +  2.1s] death certificate ISSUED; private key DESTROYED
+[alice    ] [alice +  2.1s] death certificate for bob VERIFIED and recorded (reason: demo decommission)
+[alice    ] [alice +  2.1s] ────── ACT 4: POST-DEATH REJECTION, LIVE ──────
+[bob      ] [bob +  2.1s] sign request REFUSED: Identity 8024993c is revoked; its private key is destroyed.
+[alice    ] [alice +  2.1s] bob REFUSED to sign post-death: Identity 8024993c is revoked; its private key is destroyed.
+[alice    ] [alice +  2.1s] REJECTED post-death-timestamped receipt from bob: identity is revoked
+[alice    ] [alice +  2.1s] REFUSED new handshake with dead agent: Responder 8024993c is dead/revoked
+[alice    ] [alice +  2.1s] DEMO COMPLETE: handshake, signed receipts, death certificate, and live post-death rejection, all cryptographically enforced
 ================================================================
 demo PASSED (initiator exit 0)

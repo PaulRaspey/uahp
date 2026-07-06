@@ -23,8 +23,10 @@ The reference demo runs three real OS processes (a registry, a responder, an ini
 [bob  ] m1 received, initiator signature VERIFIED; sent m2
 [alice] m2 received, responder signature VERIFIED; sent m3
 [alice] MUTUAL HANDSHAKE COMPLETE, shared secret sha256 matches on both nodes
-[alice] ────── ACT 2: SIGNED RECEIPT EXCHANGE ──────
-[alice] peer receipt signature VERIFIED (both directions signed and checked)
+[alice] ────── ACT 2: ENCRYPTED RECEIPT EXCHANGE (ChaCha20-Poly1305 record layer) ──────
+[alice] receipt sealed into AEAD record frame (seq 0, ciphertext a35ddfcf...)
+[bob  ] decrypted receipt, signature VERIFIED
+[alice] peer receipt signature VERIFIED; receipts traveled ENCRYPTED in both directions
 [alice] ────── ACT 3: DEATH CERTIFICATE ──────
 [bob  ] death certificate ISSUED; private key DESTROYED
 [alice] ────── ACT 4: POST-DEATH REJECTION, LIVE ──────
@@ -62,7 +64,7 @@ The compliance verifier probes a live agent over HTTP and prints PASS or FAIL pe
 uahp verify http://127.0.0.1:8100
 ```
 
-It checks six things: a real Ed25519 identity (challenge signatures that verify and bind), a completed mutual handshake, receipts signed and verified in both directions with tampered receipts rejected, replay refusal, an honest crypto_mode declaration, and revocation honored after death. The reference agent scores 6 of 6 PASS. The included `demos/broken_agent.py`, which uses HMAC pseudo-signatures, accepts everything, claims hybrid PQC it does not have, and ignores its own death certificate, scores 6 of 6 correct FAILs and a nonzero exit code. Note that the revocation check is destructive by design: it asks the agent to die and then confirms the death sticks.
+It checks seven things: a real Ed25519 identity (challenge signatures that verify and bind), a completed mutual handshake, receipts signed and verified in both directions through the encrypted record channel with tampered receipts rejected, plaintext receipts refused outside that channel, replay refusal, an honest crypto_mode declaration, and revocation honored after death. The reference agent scores 7 of 7 PASS. The included `demos/broken_agent.py`, which uses HMAC pseudo-signatures, accepts everything, claims hybrid PQC it does not have, and ignores its own death certificate, scores 7 of 7 correct FAILs and a nonzero exit code. Note that the revocation check is destructive by design: it asks the agent to die and then confirms the death sticks.
 
 ## The handshake
 
@@ -85,6 +87,8 @@ B: handshake_complete(bob, m3)                both sides hold the same session
 
 The shared secret comes from an ephemeral X25519 exchange, run through HKDF-SHA256 keyed by the transcript hash. Replay protection uses a nonce cache, timestamps with a clock skew window, and sequence numbered receipts.
 
+The secret is not decorative: a ChaCha20-Poly1305 record layer derives per-direction keys from it (HKDF with distinct labels, so the two directions never share a nonce space) and moves receipts as AEAD frames with counter nonces and strict sequence checks. Receipts are refused outside this encrypted channel, and the compliance verifier tests exactly that.
+
 ## Identity model
 
 An agent identity is an Ed25519 keypair. `agent_id` is canonical everywhere: core, schemas, wire formats, and MCP tools. A public identity is `{agent_id, public_key, created_at, protocol_version, metadata}`. The CLI stores its identity at `~/.uahp/identity.json` with `agent_id = sha256(public key bytes)`.
@@ -102,6 +106,7 @@ An agent identity is an Ed25519 keypair. `agent_id` is canonical everywhere: cor
 ```
 uahp/                the core package
   core.py            identity, handshake, receipts, death certificates
+  record.py          AEAD record layer (ChaCha20-Poly1305 over the session secret)
   reputation.py      trust scoring from receipt history
   compliance.py      EU AI Act style compliance reports
   a2a.py             A2A agent cards and death events
@@ -130,7 +135,7 @@ UAHP speaks to the ecosystem it completes: it ships an MCP server exposing the p
 ## Tests
 
 ```
-tests/test_crypto.py        33 passed, includes test_revocation_rejects_post_death
+tests/test_crypto.py        42 passed, includes post-death rejection and the AEAD record layer
 tests/test_two_process.py   mutual handshake across two OS processes, same secret
 tests/test_stack.py         identity -> receipts -> reputation -> compliance -> A2A -> death -> MCP
 tests/test_extended.py      edge cases, reputation consistency, death blocks trust

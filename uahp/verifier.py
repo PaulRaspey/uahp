@@ -7,12 +7,15 @@ the protocol requirements and reports PASS or FAIL per requirement:
     1. identity          real Ed25519 identity, verifiable signatures
     2. handshake         3-message mutual handshake completes, shared
                          secret digests match
-    3. receipts          signed receipts verify both directions, and
-                         tampered receipts are rejected
-    4. replay            replayed handshake openings are refused
-    5. revocation        death certificate honored: post-death signing
-                         is refused (DESTRUCTIVE: kills the candidate)
+    3. receipts          signed receipts verify both directions through
+                         the encrypted record channel, and tampered
+                         receipts are rejected
+    4. record            plaintext receipts outside the encrypted record
+                         channel are refused
+    5. replay            replayed handshake openings are refused
     6. crypto_mode       declared crypto mode matches what actually ran
+    7. revocation        death certificate honored: post-death signing
+                         is refused (DESTRUCTIVE: kills the candidate)
 
 The revocation check is destructive by design: it asks the candidate
 to issue its own death certificate. Run it against a disposable agent.
@@ -29,6 +32,7 @@ from typing import List, Optional
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from .core import UAHPCore, HandshakeError, Receipt, DeathCertificate, verify_signature
+from .record import RecordError
 
 
 @dataclass
@@ -133,6 +137,8 @@ class AgentVerifier:
         digest = hashlib.sha256(session.shared_secret).hexdigest()
         if digest != done.get("secret_sha256"):
             return self._record("handshake", False, "shared secret digests DIFFER")
+        self._session_token = done["session_token"]
+        self._channel = session.record_channel(self.me.agent_id)
         return self._record(
             "handshake", True,
             "mutual 3-message handshake complete; both signatures verified; "
@@ -141,36 +147,83 @@ class AgentVerifier:
     # ── 3. Signed receipts ───────────────────────────────────────────────
 
     def check_receipts(self) -> bool:
+        channel = getattr(self, "_channel", None)
+        token = getattr(self, "_session_token", "")
+        if channel is None:
+            return self._record(
+                "receipts", False,
+                "no encrypted record channel (handshake did not complete)")
+
         mine = self.core.create_receipt(
             self.me, "verify-task", "compliance_probe", True,
             input_data="probe", output_data="probe",
         )
+        frame = channel.seal({"receipt": mine.to_dict(),
+                              "public_key": self.me.public_key})
         status, ack = _post(f"{self.base}/uahp/receipt",
-                            {"receipt": mine.to_dict(),
-                             "public_key": self.me.public_key})
-        if status != 200 or not ack.get("verified"):
+                            {"session_token": token, "frame": frame})
+        if status != 200 or "frame" not in ack:
+            return self._record(
+                "receipts", False,
+                "agent did not answer through the encrypted record channel")
+        try:
+            inner = json.loads(channel.open(ack["frame"]).decode())
+        except RecordError as e:
+            return self._record("receipts", False, f"reply frame invalid: {e}")
+        if not inner.get("verified"):
             return self._record("receipts", False, "agent did not verify our signed receipt")
         try:
-            theirs = Receipt(**ack["receipt"])
+            theirs = Receipt(**inner["receipt"])
         except (KeyError, TypeError):
             return self._record("receipts", False, "agent returned no receipt of its own")
-        if not self.core.verify_receipt(theirs, ack.get("public_key", "")):
+        if not self.core.verify_receipt(theirs, inner.get("public_key", "")):
             return self._record("receipts", False, "agent's receipt signature does not verify")
 
-        # The agent must REJECT a tampered receipt.
+        # The agent must REJECT a tampered receipt, even inside a valid frame.
         tampered = mine.to_dict()
         tampered["success"] = not tampered["success"]  # body changed, signature stale
+        frame = channel.seal({"receipt": tampered,
+                              "public_key": self.me.public_key})
         status, resp = _post(f"{self.base}/uahp/receipt",
-                             {"receipt": tampered, "public_key": self.me.public_key})
-        if status == 200 and resp.get("verified"):
+                             {"session_token": token, "frame": frame})
+        if status == 200 and "frame" not in resp and resp.get("verified"):
             return self._record(
                 "receipts", False,
                 "agent ACCEPTED a tampered receipt (no real verification)")
+        if status == 200 and "frame" in resp:
+            try:
+                if json.loads(channel.open(resp["frame"]).decode()).get("verified"):
+                    return self._record(
+                        "receipts", False,
+                        "agent ACCEPTED a tampered receipt (no real verification)")
+            except RecordError:
+                pass
         return self._record(
             "receipts", True,
-            "receipts verify both directions; tampered receipt rejected")
+            "encrypted receipts verify both directions; tampered receipt rejected")
 
-    # ── 4. Replay protection ─────────────────────────────────────────────
+    # ── 4. Record layer enforced ─────────────────────────────────────────
+
+    def check_record(self) -> bool:
+        """Plaintext receipts outside the record channel must be refused."""
+        mine = self.core.create_receipt(
+            self.me, "verify-task-plain", "compliance_probe", True,
+            input_data="probe", output_data="probe",
+        )
+        status, resp = _post(f"{self.base}/uahp/receipt",
+                             {"receipt": mine.to_dict(),
+                              "public_key": self.me.public_key})
+        if status == 200 and resp.get("verified"):
+            return self._record(
+                "record", False,
+                "agent ACCEPTED a plaintext receipt outside the encrypted "
+                "record channel")
+        return self._record(
+            "record", True,
+            f"plaintext receipt refused ({status}): traffic must ride the "
+            "AEAD record layer")
+
+    # ── 5. Replay protection ─────────────────────────────────────────────
 
     def check_replay(self) -> bool:
         m1 = getattr(self, "_m1_replay", None)
@@ -185,7 +238,7 @@ class AgentVerifier:
             "replay", True,
             f"replayed opening refused ({status}): {resp.get('error', 'rejected')}")
 
-    # ── 5. Revocation honored (destructive) ──────────────────────────────
+    # ── 7. Revocation honored (destructive) ──────────────────────────────
 
     def check_revocation(self) -> bool:
         status, dead = _post(f"{self.base}/uahp/die",
@@ -212,7 +265,7 @@ class AgentVerifier:
             "death certificate verifies; post-death signing refused: "
             f"{resp.get('refusal', 'rejected')}")
 
-    # ── 6. Honest crypto_mode ────────────────────────────────────────────
+    # ── 6. Honest crypto_mode ─────────────────────────────────────────────
 
     def check_crypto_mode(self) -> bool:
         declared = (self.peer_public or {}).get("metadata", {}).get(
@@ -237,6 +290,7 @@ class AgentVerifier:
             return self.results
         self.check_handshake()
         self.check_receipts()
+        self.check_record()
         self.check_replay()
         self.check_crypto_mode()
         self.check_revocation()  # destructive: keep last
