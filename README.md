@@ -165,7 +165,11 @@ Micro-benchmark (`python3 demos/benchmark.py`): about 350 full 3-message mutual 
 
 ## Docker
 
-`Dockerfile` and `docker-compose.yml` (a registry plus two agent nodes) match the reference demo topology and entrypoint exactly, but the compose path has not been executed by the maintainer yet. The validated path is `pip install -e ".[registry]"` plus `demos/run_demo.py`. If you run the compose path, an issue confirming or correcting it is welcome.
+`Dockerfile` and `docker-compose.yml` run the reference demo topology as three containers: a registry plus two agent nodes. CI executes this compose path on every push and fails unless the initiator container completes all four acts and exits 0. Run it yourself with:
+
+```bash
+docker compose up --build --exit-code-from agent-alice
+```
 
 ## Requirements
 
